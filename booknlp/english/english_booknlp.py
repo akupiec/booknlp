@@ -51,6 +51,24 @@ class EnglishBookNLP:
 			if not Path(modelPath).is_dir():
 				Path(modelPath).mkdir(parents=True, exist_ok=True)
 
+			model_base_url = "http://people.ischool.berkeley.edu/~dbamman/booknlp_models/"
+
+			def download_with_progress(model_name, destination_path):
+				url = f"{model_base_url}{model_name}"
+				last_reported_percent = -1
+
+				def reporthook(block_count, block_size, total_size):
+					nonlocal last_reported_percent
+					if total_size <= 0:
+						return
+					downloaded = min(block_count * block_size, total_size)
+					percent = int((downloaded * 100) / total_size)
+					if percent == 100 or (percent % 10 == 0 and percent != last_reported_percent):
+						print(f"{model_name}: {percent}%")
+						last_reported_percent = percent
+
+				urllib.request.urlretrieve(url, destination_path, reporthook=reporthook)
+
 			if model_params["model"] == "big":
 				entityName="entities_google_bert_uncased_L-6_H-768_A-12-v1.0.model"
 				corefName="coref_google_bert_uncased_L-12_H-768_A-12-v1.0.model"
@@ -59,17 +77,17 @@ class EnglishBookNLP:
 				self.entityPath=os.path.join(modelPath, entityName)
 				if not Path(self.entityPath).is_file():
 					print("downloading %s" % entityName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % entityName, self.entityPath)
+					download_with_progress(entityName, self.entityPath)
 
 				self.coref_model=os.path.join(modelPath, corefName)
 				if not Path(self.coref_model).is_file():
 					print("downloading %s" % corefName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % corefName, self.coref_model)
+					download_with_progress(corefName, self.coref_model)
 
 				self.quoteAttribModel=os.path.join(modelPath, quoteAttribName)
 				if not Path(self.quoteAttribModel).is_file():
 					print("downloading %s" % quoteAttribName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % quoteAttribName, self.quoteAttribModel)
+					download_with_progress(quoteAttribName, self.quoteAttribModel)
 
 
 			elif model_params["model"] == "small":
@@ -80,17 +98,17 @@ class EnglishBookNLP:
 				self.entityPath=os.path.join(modelPath, entityName)
 				if not Path(self.entityPath).is_file():
 					print("downloading %s" % entityName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % entityName, self.entityPath)
+					download_with_progress(entityName, self.entityPath)
 
 				self.coref_model=os.path.join(modelPath, corefName)
 				if not Path(self.coref_model).is_file():
 					print("downloading %s" % corefName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % corefName, self.coref_model)
+					download_with_progress(corefName, self.coref_model)
 
 				self.quoteAttribModel=os.path.join(modelPath, quoteAttribName)
 				if not Path(self.quoteAttribModel).is_file():
 					print("downloading %s" % quoteAttribName)
-					urllib.request.urlretrieve("http://people.ischool.berkeley.edu/~dbamman/booknlp_models/%s" % quoteAttribName, self.quoteAttribModel)
+					download_with_progress(quoteAttribName, self.quoteAttribModel)
 
 			elif model_params["model"] == "custom":
 				self.entityPath=model_params["entity_model_path"]
@@ -602,5 +620,4 @@ class EnglishBookNLP:
 
 				print("--- TOTAL (excl. startup): %.3f seconds ---, %s words" % (time.time() - originalTime, len(tokens)))
 				return time.time() - originalTime
-
 

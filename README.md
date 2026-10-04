@@ -95,7 +95,8 @@ The pipeline generates several output files in the specified output directory:
 ## Example
 
 ```bash
-# Process a text file named "emma.txt" with maximum accuracy
-./run_booknlp.py emma.txt --output-dir output/emma --model big
+uv sync
+
+uv run run_booknlp.py pride.short.txt --output-dir output/pride --model small
 ```
 
