@@ -16,7 +16,6 @@ from html import escape
 import time
 from pathlib import Path
 import urllib.request 
-import pkg_resources
 import torch
 
 class EnglishBookNLP:
@@ -44,8 +43,8 @@ class EnglishBookNLP:
 			if "referential_gender_cats" in model_params:
 				self.gender_cats=model_params["referential_gender_cats"]
 
-			home = str(Path.home())
-			modelPath=os.path.join(home, "booknlp_models")
+			project_root = Path(__file__).resolve().parents[2]
+			modelPath=os.path.join(project_root, "model")
 			if "model_path"  in model_params:			
 				modelPath=model_params["model_path"]
 
@@ -117,13 +116,13 @@ class EnglishBookNLP:
 					self.doQuoteAttrib=True
 
 			tagsetPath="data/entity_cat.tagset"
-			tagsetPath = pkg_resources.resource_filename(__name__, tagsetPath)
+			tagsetPath = os.path.join(os.path.dirname(__file__), tagsetPath)
 
 
 			if "referential_gender_hyperparameterFile" in model_params:
 				self.gender_hyperparameterFile=model_params["referential_gender_hyperparameterFile"]
 			else:
-				self.gender_hyperparameterFile = pkg_resources.resource_filename(__name__, "data/gutenberg_prop_gender_terms.txt")
+				self.gender_hyperparameterFile = os.path.join(os.path.dirname(__file__), "data/gutenberg_prop_gender_terms.txt")
 			
 			pronominalCorefOnly=True
 
@@ -146,7 +145,7 @@ class EnglishBookNLP:
 
 			if self.doEntities:
 				self.entityTagger=LitBankEntityTagger(self.entityPath, tagsetPath)
-				aliasPath = pkg_resources.resource_filename(__name__, "data/aliases.txt")
+				aliasPath = os.path.join(os.path.dirname(__file__), "data/aliases.txt")
 				self.name_resolver=NameCoref(aliasPath)
 
 

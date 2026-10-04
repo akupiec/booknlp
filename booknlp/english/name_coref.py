@@ -7,7 +7,7 @@ e.g., Tom, Tom Saywer, Mr. Tom Sawyer, Mr. Sawyer -> TOM SAYWER
 from collections import Counter
 import sys
 import itertools
-import pkg_resources
+import os
 
 class NameCoref:
 
@@ -443,7 +443,7 @@ class NameCoref:
 
 if __name__ == "__main__":
 
-	aliasFile = pkg_resources.resource_filename(__name__, "data/aliases.txt")
+	aliasFile = os.path.join(os.path.dirname(__file__), "data/aliases.txt")
 	resolver=NameCoref(aliasFile)
 	resolver.process(sys.argv[1])
 

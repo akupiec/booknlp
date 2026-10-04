@@ -1,16 +1,16 @@
 from booknlp.english.tagger import Tagger
 import torch
 import re
+import os
 import booknlp.common.layered_reader as layered_reader
 import booknlp.common.sequence_layered_reader as sequence_layered_reader
-import pkg_resources
 
 class LitBankEntityTagger:
 	def __init__(self, model_file, model_tagset):
 
 		device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 		self.tagset=sequence_layered_reader.read_tagset(model_tagset)
-		supersenseTagset = pkg_resources.resource_filename(__name__, "data/supersense.tagset")
+		supersenseTagset = os.path.join(os.path.dirname(__file__), "data/supersense.tagset")
 
 		self.supersense_tagset=sequence_layered_reader.read_tagset(supersenseTagset)
 		base_model=re.sub("google_bert", "google/bert", model_file.split("/")[-1])
@@ -23,7 +23,7 @@ class LitBankEntityTagger:
 		# Filter out unexpected keys
 		state_dict = {k: v for k, v in state_dict.items() if not k.startswith('bert.embeddings.position_ids')}
 		self.model.load_state_dict(state_dict)
-		wnsFile = pkg_resources.resource_filename(__name__, "data/wordnet.first.sense")
+		wnsFile = os.path.join(os.path.dirname(__file__), "data/wordnet.first.sense")
 		self.wns=self.read_wn(wnsFile)
 
 	def read_wn(self, filename):
@@ -116,13 +116,13 @@ class LitBankEntityTagger:
 				sent=[]
 				o_sent=[]
 				length=0
-			
+
 			sent.append(toks)
 			o_sent.append(tok)
 
 			lastSid=tok.sentence_id
 			length+=len(toks)
-		
+
 		sents.append(sent)
 		o_sents.append(o_sent)
 
@@ -158,7 +158,7 @@ class LitBankEntityTagger:
 			o_sent.extend(o_sents[idx])
 
 
-		if len(sentence) > 1:		
+		if len(sentence) > 1:
 			sentence.append(["[SEP]"])
 			o_sentences.append(o_sent)
 			sentences.append(sentence)
@@ -166,7 +166,7 @@ class LitBankEntityTagger:
 		sents=o_sentences
 
 		batched_sents, batched_data, batched_mask, batched_transforms, batched_orig_token_lens, ordering, order_to_batch_map = layered_reader.get_batches(self.model, sentences, batch_size, self.tagset, training=False)
-		
+
 		batch_pos={}
 		for idx, ind in enumerate(ordering):
 			batch_id, batch_s, batch_position=order_to_batch_map[idx]
@@ -185,7 +185,7 @@ class LitBankEntityTagger:
 		wn_batches=self.get_wn(batched_pos)
 
 		preds_in_order, events_in_order, supersense_preds_in_order=self.model.tag_all(wn_batches, batched_sents, batched_data, batched_mask, batched_transforms, batched_orig_token_lens, ordering, doEvent=doEvent, doEntities=doEntities, doSS=doSS)
-		
+
 		return_vals={}
 
 		if doEntities:
@@ -211,8 +211,8 @@ class LitBankEntityTagger:
 						phraseEndToken=start_token
 					supersense_entities.append((start_token, phraseEndToken, label, phrase))
 			return_vals["supersense"]=supersense_entities
-			
-		
+
+
 		if doEvent:
 			events={}
 			for idx, preds in enumerate(events_in_order):
@@ -224,6 +224,3 @@ class LitBankEntityTagger:
 				return_vals["events"]=events
 
 		return return_vals
-
-
-
