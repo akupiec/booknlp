@@ -4,45 +4,25 @@ A natural language processing pipeline for analyzing works of fiction, including
 
 ## Prerequisites
 
-- Python 3.9 or higher
-- pip (Python package installer)
-- Virtual environment (recommended)
+both python & dependencies are managed by `uv` here is [Installation guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/booknlp.git
+git clone https://github.com/akupiec/booknlp
 cd booknlp
 ```
 
-2. Create and activate a virtual environment:
+2. Install the required packages:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
-```
-
-3. Install the required packages:
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-4. Install the spaCy model:
-```bash
-python -m spacy download en_core_web_sm
+uv sync
 ```
 
 ## Usage
 
-1. Make sure your virtual environment is activated:
 ```bash
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
-```
-
-2. Run BookNLP on a text file:
-```bash
-./run_booknlp.py input_file.txt --output-dir output/directory
+uv run run_booknlp.py examples/pride.short.txt --output-dir output/pride --model small
 ```
 
 ### Command Line Arguments
@@ -91,12 +71,3 @@ The pipeline generates several output files in the specified output directory:
    - Entity annotations
    - Character relationships
    - Interactive features
-
-## Example
-
-```bash
-uv sync
-
-uv run run_booknlp.py pride.short.txt --output-dir output/pride --model small
-```
-
