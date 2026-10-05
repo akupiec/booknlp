@@ -10,181 +10,239 @@ from booknlp.english.name_coref import NameCoref
 
 
 class LitBankCoref:
+    def __init__(self, modelFile, gender_cats, pronominalCorefOnly=True):
 
-	def __init__(self, modelFile, gender_cats, pronominalCorefOnly=True):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-		device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        base_model = re.sub("google_bert", "google/bert", modelFile.split("/")[-1])
+        base_model = re.sub(".model", "", base_model)
 
-		base_model=re.sub("google_bert", "google/bert", modelFile.split("/")[-1])
-		base_model=re.sub(".model", "", base_model)
+        self.model = BERTCorefTagger(
+            gender_cats=gender_cats,
+            freeze_bert=True,
+            base_model=base_model,
+            pronominalCorefOnly=pronominalCorefOnly,
+        )
+        state_dict = torch.load(modelFile, map_location=device)
+        # Filter out unexpected keys
+        state_dict = {
+            k: v
+            for k, v in state_dict.items()
+            if not k.startswith("bert.embeddings.position_ids")
+        }
+        self.model.load_state_dict(state_dict)
+        self.model.to(device)
+        self.model.eval()
 
-		self.model = BERTCorefTagger(gender_cats=gender_cats, freeze_bert=True, base_model=base_model, pronominalCorefOnly=pronominalCorefOnly)
-		state_dict = torch.load(modelFile, map_location=device)
-		# Filter out unexpected keys
-		state_dict = {k: v for k, v in state_dict.items() if not k.startswith('bert.embeddings.position_ids')}
-		self.model.load_state_dict(state_dict)
-		self.model.to(device)
-		self.model.eval()
+    def tag(self, tokens, g_ents, refs, ref_gender, attributed_quotations, quotes):
+        sentences, ents, max_words, max_ents = self.convert_data(tokens, g_ents)
+        assignments, global_entities = self.test(
+            sentences,
+            ents,
+            max_words,
+            max_ents,
+            refs,
+            ref_gender,
+            attributed_quotations,
+            quotes,
+        )
+        return assignments
 
+    def test(
+        self,
+        test_doc,
+        test_ents,
+        max_words,
+        max_ents,
+        refs,
+        ref_gender,
+        attributed_quotations,
+        quotes,
+    ):
 
-	def tag(self, tokens, g_ents, refs, ref_gender, attributed_quotations, quotes):
-		sentences, ents, max_words, max_ents=self.convert_data(tokens, g_ents)
-		assignments,global_entities=self.test(sentences, ents, max_words, max_ents, refs, ref_gender, attributed_quotations, quotes)
-		return assignments
+        global_entities = []
+        for ents in test_ents:
+            global_entities.extend(ents)
 
+        for ent in global_entities:
+            if ent.in_quote:
+                for idx, (q_start, q_end) in enumerate(quotes):
+                    if ent.global_start >= q_start and ent.global_start <= q_end:
+                        ent.quote_mention = attributed_quotations[idx]
 
-	def test(self, test_doc, test_ents, max_words, max_ents, refs, ref_gender, attributed_quotations, quotes):
+        (
+            test_matrix,
+            test_index,
+            test_token_positions,
+            test_ent_spans,
+            test_starts,
+            test_ends,
+            test_widths,
+            test_data,
+            test_masks,
+            test_transforms,
+            test_quotes,
+        ) = self.model.get_data(test_doc, test_ents, max_ents, max_words)
 
-		global_entities=[]
-		for ents in test_ents:
-			global_entities.extend(ents)
+        assignments = self.model.forward(
+            test_matrix,
+            test_index,
+            existing=refs,
+            token_positions=test_token_positions,
+            starts=test_starts,
+            ends=test_ends,
+            widths=test_widths,
+            input_ids=test_data,
+            attention_mask=test_masks,
+            transforms=test_transforms,
+            ref_genders=ref_gender,
+            entities=global_entities,
+        )
 
-		for ent in global_entities:
-			if ent.in_quote:
-				for idx, (q_start, q_end) in enumerate(quotes):
-					if ent.global_start >= q_start and ent.global_start <= q_end:
-						ent.quote_mention=attributed_quotations[idx]
+        aliasFile = os.path.join(os.path.dirname(__file__), "data/aliases.txt")
 
-		test_matrix, test_index, test_token_positions, test_ent_spans, test_starts, test_ends, test_widths, test_data, test_masks, test_transforms, test_quotes=self.model.get_data(test_doc, test_ents, max_ents, max_words)
-		
-		assignments=self.model.forward(test_matrix, test_index, existing=refs, token_positions=test_token_positions, starts=test_starts, ends=test_ends, widths=test_widths, input_ids=test_data, attention_mask=test_masks, transforms=test_transforms, ref_genders=ref_gender, entities=global_entities)
-		
-		aliasFile = os.path.join(os.path.dirname(__file__), "data/aliases.txt")
+        nameCoref = NameCoref(aliasFile)
 
-		nameCoref=NameCoref(aliasFile)
+        e_list = []
+        for ent in global_entities:
+            e_list.append(
+                (
+                    ent.global_start,
+                    ent.global_end,
+                    "%s_%s" % (ent.proper, ent.ner_cat),
+                    ent.text,
+                )
+            )
 
-		e_list=[]
-		for ent in global_entities:
-			e_list.append((ent.global_start, ent.global_end, "%s_%s" % (ent.proper, ent.ner_cat), ent.text))
+        assignments = nameCoref.cluster_noms(e_list, assignments)
 
-		assignments=nameCoref.cluster_noms(e_list, assignments)
+        for ass in assignments:
+            if ass == -1:
+                print(assignments)
+                sys.exit(1)
 
-		for ass in assignments:
-			if ass == -1:
-				print(assignments)
-				sys.exit(1)
+        return assignments, global_entities
 
-		return assignments, global_entities
+    def convert_data(self, tokens, entities):
 
-	def convert_data(self, tokens, entities):
+        max_words = 0
+        max_ents = 0
 
-		max_words=0
-		max_ents=0
+        sents = []
+        o_sents = []
+        sent = []
+        o_sent = []
+        lastSid = None
+        max_sentence_length = 500
+        length = 0
+        mapper = {}
 
-		sents=[]
-		o_sents=[]
-		sent=[]
-		o_sent=[]
-		lastSid=None
-		max_sentence_length=500
-		length=0
-		mapper={}
+        for tok in tokens:
+            wptok = tok.text
+            if wptok[0].lower() != wptok[0]:
+                wptok = "[CAP] " + wptok.lower()
 
-		for tok in tokens:
+            toks = self.model.tokenizer.tokenize(wptok)
+            if lastSid is not None and (
+                tok.sentence_id != lastSid or length + len(toks) > max_sentence_length
+            ):
+                sents.append(sent)
+                o_sents.append(o_sent)
+                sent = []
+                o_sent = []
+                length = 0
 
-			wptok=tok.text
-			if wptok[0].lower() != wptok[0]:
-				wptok="[CAP] " + wptok.lower()
+            sent.append(toks)
+            o_sent.append(tok)
 
-			toks=self.model.tokenizer.tokenize(wptok)
-			if lastSid is not None and (tok.sentence_id != lastSid or length + len(toks) > max_sentence_length):
-				sents.append(sent)
-				o_sents.append(o_sent)
-				sent=[]
-				o_sent=[]
-				length=0
-			
-			sent.append(toks)
-			o_sent.append(tok)
+            lastSid = tok.sentence_id
+            length += len(toks)
 
-			lastSid=tok.sentence_id
-			length+=len(toks)
-		
-		sents.append(sent)
-		o_sents.append(o_sent)
+        sents.append(sent)
+        o_sents.append(o_sent)
 
-		sentences=[]
-		o_sentences=[]
+        sentences = []
+        o_sentences = []
 
-		max_sentence_length=500
+        max_sentence_length = 500
 
-		sentence=[ "[CLS]" ]
-		ents=[]
-		o_sent=[]
+        sentence = ["[CLS]"]
+        ents = []
+        o_sent = []
 
-		running_length=0
+        running_length = 0
 
-		for idx, sent in enumerate(sents):
+        for idx, sent in enumerate(sents):
+            length = 0
+            for toks in sent:
+                length += len(toks)
 
-			length=0
-			for toks in sent:
-				length+=len(toks)
+            if length + running_length >= max_sentence_length:
+                sentence.append("[SEP]")
+                sentences.append(sentence)
+                ents.append([])
+                o_sentences.append(o_sent)
+                running_length = 1
+                sentence = ["[CLS]"]
+                o_sent = []
 
-			if length + running_length >= max_sentence_length:
-				sentence.append("[SEP]")
-				sentences.append(sentence)
-				ents.append([])
-				o_sentences.append(o_sent)
-				running_length=1
-				sentence=["[CLS]"]
-				o_sent=[]
+            running_length += length
 
-			running_length+=length
+            for word in o_sents[idx]:
+                mapper[word.token_id] = len(sentences), len(sentence)
 
-			for word in o_sents[idx]:
-				mapper[word.token_id]=len(sentences), len(sentence)
-				
-				wptok=word.text
-				if wptok[0].lower() != wptok[0]:
-					wptok="[CAP] " + wptok.lower()
+                wptok = word.text
+                if wptok[0].lower() != wptok[0]:
+                    wptok = "[CAP] " + wptok.lower()
 
-				sentence.append(wptok)
+                sentence.append(wptok)
 
-			o_sent.extend(o_sents[idx])
+            o_sent.extend(o_sents[idx])
 
+        if len(sentence) > 1:
+            sentence.append("[SEP]")
+            ents.append([])
+            o_sentences.append(o_sent)
+            sentences.append(sentence)
 
-		if len(sentence) > 1:		
-			sentence.append("[SEP]")
-			ents.append([])
-			o_sentences.append(o_sent)
-			sentences.append(sentence)
+        sents = o_sentences
 
-		sents=o_sentences
+        lastS = -1
 
-		lastS=-1
-		
-		entities=sorted(entities)
+        entities = sorted(entities)
 
-		for (start, end, cat, text) in entities:
-			sent_id, w_in_sent_id_start=mapper[tokens[start].token_id]
-			e_sent_id, w_in_sent_id_end=mapper[tokens[end].token_id]
+        for start, end, cat, text in entities:
+            sent_id, w_in_sent_id_start = mapper[tokens[start].token_id]
+            e_sent_id, w_in_sent_id_end = mapper[tokens[end].token_id]
 
-			# if sent_id != e_sent_id:
-			# 	print(sent_id,e_sent_id, "crossing sentence boundaries!" )
-			# if sent_id < lastS:
-			# 	print(sent_id, lastS, "non-monotonic!")
+            # if sent_id != e_sent_id:
+            # 	print(sent_id,e_sent_id, "crossing sentence boundaries!" )
+            # if sent_id < lastS:
+            # 	print(sent_id, lastS, "non-monotonic!")
 
-			lastS=sent_id
+            lastS = sent_id
 
-			inQuote=0
-			if tokens[start].inQuote or tokens[end].inQuote:
-				inQuote=1
-			
+            inQuote = 0
+            if tokens[start].inQuote or tokens[end].inQuote:
+                inQuote = 1
 
-			ent=Entity(w_in_sent_id_start, w_in_sent_id_end, in_quote=inQuote, quote_eid=None, entity_id=None, text=text)
-			ner_parts=cat.split("_")
-			ent.ner_cat=ner_parts[1]
-			ent.proper=ner_parts[0]
-			ent.global_start=start
-			ent.global_end=end
+            ent = Entity(
+                w_in_sent_id_start,
+                w_in_sent_id_end,
+                in_quote=inQuote,
+                quote_eid=None,
+                entity_id=None,
+                text=text,
+            )
+            ner_parts = cat.split("_")
+            ent.ner_cat = ner_parts[1]
+            ent.proper = ner_parts[0]
+            ent.global_start = start
+            ent.global_end = end
 
-			ents[sent_id].append(ent)
+            ents[sent_id].append(ent)
 
+        max_words = max(len(sentence) for sentence in sentences)
+        max_ents = max(len(ent) for ent in ents)
 
-
-		max_words=max(len(sentence) for sentence in sentences)
-		max_ents=max(len(ent) for ent in ents)
-
-		return sentences, ents, max_words, max_ents
-
-
+        return sentences, ents, max_words, max_ents

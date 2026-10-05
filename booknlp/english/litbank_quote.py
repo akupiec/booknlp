@@ -2,86 +2,81 @@ from collections import Counter
 
 
 class QuoteTagger:
-	
+    def tag(self, toks):
 
-	def tag(self, toks):
+        predictions = []
+        currentQuote = []
+        curStartTok = None
+        lastPar = None
 
-		predictions=[]
-		currentQuote=[]
-		curStartTok=None
-		lastPar=None
+        quote_symbols = Counter()
+        bracket_predictions = []
+        bracket_stack = []
 
-		quote_symbols=Counter()
-		bracket_predictions=[]
-		bracket_stack=[]
+        for tok in toks:
+            if tok.text == "“" or tok.text == "”" or tok.text == '"' or tok.text == "“":
+                quote_symbols["DOUBLE_QUOTE"] += 1
+            elif tok.text == "‘" or tok.text == "’" or tok.text == "'":
+                quote_symbols["SINGLE_QUOTE"] += 1
+            elif tok.text == "—":
+                quote_symbols["DASH"] += 1
 
-		for tok in toks:
-			if tok.text == "“" or tok.text == "”" or tok.text == "\"" or tok.text == "“":
-				quote_symbols["DOUBLE_QUOTE"]+=1
-			elif tok.text == "‘" or tok.text == "’" or tok.text == "'":
-				quote_symbols["SINGLE_QUOTE"]+=1
-			elif tok.text == "—":
-				quote_symbols["DASH"]+=1
+        quote_symbol = "DOUBLE_QUOTE"
+        if len(quote_symbols) > 0:
+            quote_symbol = quote_symbols.most_common()[0][0]
 
+        for tok in toks:
+            w = tok.text
 
-		quote_symbol="DOUBLE_QUOTE"
-		if len(quote_symbols) > 0:
-			quote_symbol=quote_symbols.most_common()[0][0]
+            for w_idx, w_char in enumerate(w):
+                if w_char == "“" or w_char == "”" or w_char == '"':
+                    w = "DOUBLE_QUOTE"
+                elif w_char == "‘" or w_char == "’" or w_char == "'":
+                    if w_idx == 0:
+                        suff = w[w_idx + 1 :]
+                        if (
+                            suff != "s"
+                            and suff != "d"
+                            and suff != "ll"
+                            and suff != "ve"
+                        ):
+                            w = "SINGLE_QUOTE"
 
-		for tok in toks:
+            # start over at each new paragraph
+            if tok.paragraph_id != lastPar and lastPar is not None:
+                if len(currentQuote) > 0:
+                    predictions.append((curStartTok, tok.token_id - 1))
+                curStartTok = None
+                currentQuote = []
+                bracket_stack = []
 
-			w=tok.text
+            if w == quote_symbol:
+                if curStartTok is not None:
+                    if len(currentQuote) > 0:
+                        predictions.append((curStartTok, tok.token_id))
+                        currentQuote.append(tok.text)
 
-			for w_idx, w_char in enumerate(w):
-				if w_char== "“" or w_char == "”" or w_char == "\"":
-					w="DOUBLE_QUOTE"
-				elif w_char == "‘" or w_char == "’" or w_char == "'":
-					if w_idx == 0:
-						suff=w[w_idx+1:]
-						if suff != "s" and suff != "d" and suff != "ll" and suff != "ve":
-							w="SINGLE_QUOTE"
+                    curStartTok = None
+                    currentQuote = []
+                else:
+                    curStartTok = tok.token_id
 
-			# start over at each new paragraph
-			if tok.paragraph_id != lastPar and lastPar is not None:
+            if curStartTok is not None:
+                currentQuote.append(tok.text)
 
-				if len(currentQuote) > 0:
-					predictions.append((curStartTok, tok.token_id-1))
-				curStartTok=None
-				currentQuote=[]
-				bracket_stack=[]
+            if w == "[":
+                bracket_stack.append(tok.token_id)
+            elif w == "]" and len(bracket_stack) > 0:
+                start_tok = bracket_stack.pop()
+                if start_tok < tok.token_id:
+                    bracket_predictions.append((start_tok, tok.token_id))
 
-			if w == quote_symbol:
+            lastPar = tok.paragraph_id
 
-				if curStartTok is not None:
+        predictions = sorted(set(predictions + bracket_predictions))
 
-					if len(currentQuote) > 0:
-						predictions.append((curStartTok, tok.token_id))
-						currentQuote.append(tok.text)
+        for start, end in predictions:
+            for i in range(start, end + 1):
+                toks[i].inQuote = True
 
-					curStartTok=None
-					currentQuote=[]
-				else:
-					curStartTok=tok.token_id
-
-			
-			if curStartTok is not None:
-				currentQuote.append(tok.text)
-
-			if w == "[":
-				bracket_stack.append(tok.token_id)
-			elif w == "]" and len(bracket_stack) > 0:
-				start_tok=bracket_stack.pop()
-				if start_tok < tok.token_id:
-					bracket_predictions.append((start_tok, tok.token_id))
-
-			lastPar=tok.paragraph_id
-
-		predictions=sorted(set(predictions + bracket_predictions))
-
-		for start, end in predictions:
-			for i in range(start, end+1):
-				toks[i].inQuote=True
-
-		return predictions
-
-
+        return predictions
