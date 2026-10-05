@@ -1,25 +1,23 @@
-import sys
 import re
-import math
-from transformers import BertTokenizer, BertModel 
 
-import torch.nn as nn
-import torch.nn.functional as F
-import torch
 import numpy as np
-import booknlp.common.crf as crf
-import booknlp.common.sequence_eval as sequence_eval
+import torch
+from torch import nn
 from torch.nn import CrossEntropyLoss
+from transformers import BertModel, BertTokenizer
+
+from booknlp.common import crf, sequence_eval
+
 
 class Tagger(nn.Module):
 
 	def __init__(self, freeze_bert=False, base_model=None, tagset=None, supersense_tagset=None, tagset_flat=None, hidden_dim=100, flat_hidden_dim=200, device=None):
-		super(Tagger, self).__init__()
+		super().__init__()
 
 		modelName=base_model
 		modelName=re.sub("^entities_", "", modelName)
-		modelName=re.sub("-v\d.*$", "", modelName)
-		matcher=re.search(".*-(\d+)_H-(\d+)_A-.*", modelName)
+		modelName=re.sub(r"-v\d.*$", "", modelName)
+		matcher=re.search(r".*-(\d+)_H-(\d+)_A-.*", modelName)
 		bert_dim=0
 		modelSize=0
 		self.num_layers=0

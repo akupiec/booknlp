@@ -1,23 +1,13 @@
+import random
 import re
-import os
-from collections import Counter
 import sys
-import argparse
 
-from transformers import BertModel
-from transformers import BertTokenizer
-
+import numpy as np
 import torch
 from torch import nn
-import torch.optim as optim
-import numpy as np
-import random
+from transformers import BertModel, BertTokenizer
 
-from booknlp.common.pipelines import Token, Entity
-from booknlp.english.litbank_quote import QuoteTagger
-from booknlp.english.name_coref import NameCoref
-
-from booknlp.english.bert_qa import QuotationAttribution
+from booknlp.common.pipelines import Entity, Token
 
 random.seed(1)
 np.random.seed(1)
@@ -32,13 +22,13 @@ print("using device", device)
 class BERTCorefTagger(nn.Module):
 
 	def __init__(self, gender_cats, freeze_bert=False, base_model=None, pronominalCorefOnly=True):
-		super(BERTCorefTagger, self).__init__()
+		super().__init__()
 
 		modelName=base_model
 		modelName=re.sub("^coref_", "", modelName)
-		modelName=re.sub("-v\d.*$", "", modelName)
+		modelName=re.sub(r"-v\d.*$", "", modelName)
 
-		matcher=re.search(".*-(\d+)_H-(\d+)_A-.*", modelName)
+		matcher=re.search(r".*-(\d+)_H-(\d+)_A-.*", modelName)
 		bert_dim=0
 		modelSize=0
 
@@ -307,8 +297,7 @@ class BERTCorefTagger(nn.Module):
 
 		if existing is not None:
 			for r in existing:
-				if r > curid:
-					curid=r
+				curid = max(curid, r)
 
 		curid+=1
 
@@ -673,10 +662,8 @@ class BERTCorefTagger(nn.Module):
 		sent_count=0
 		for idx, sent in enumerate(doc):
 			
-			if len(sent) > max_w:
-				max_w=len(sent)
-			if len(ents[idx]) > max_e:
-				max_e = len(ents[idx])
+			max_w = max(max_w, len(sent))
+			max_e = max(max_e, len(ents[idx]))
 
 			sent_count+=1
 
@@ -887,15 +874,13 @@ class BERTCorefTagger(nn.Module):
 		big_doc_ents=[]
 
 		for idx, sent in enumerate(all_doc_sents):
-			if len(sent) > max_words:
-				max_words=len(sent)
+			max_words = max(max_words, len(sent))
 
 			this_sent_ents=[]
 			all_sent_ents=sorted(all_doc_ents[idx], key=lambda x: (x.start, x.end))
 			all_ents.extend(all_sent_ents)
 
-			if len(all_sent_ents) > max_ents:
-				max_ents=len(all_sent_ents)
+			max_ents = max(max_ents, len(all_sent_ents))
 
 			for entity in all_sent_ents:
 				this_sent_ents.append(entity)
@@ -1017,7 +1002,7 @@ class BERTCorefTagger(nn.Module):
 					wid=0
 
 					docid=None
-					matcher=re.match("#begin document \((.*)\); part (.*)$", line.rstrip())
+					matcher=re.match(r"#begin document \((.*)\); part (.*)$", line.rstrip())
 					if matcher != None:
 						docid=matcher.group(1)
 						partID=matcher.group(2)
@@ -1063,7 +1048,7 @@ class BERTCorefTagger(nn.Module):
 
 				else:
 
-					parts=re.split("\s+", line.rstrip())
+					parts=re.split(r"\s+", line.rstrip())
 
 					if len(parts) < 2:
 						sid+=1
@@ -1143,15 +1128,15 @@ class BERTCorefTagger(nn.Module):
 
 					for c in coref:
 						if c.startswith("(") and c.endswith(")"):
-							c=re.sub("\(", "", c)
-							c=int(re.sub("\)", "", c))
+							c=re.sub(r"\(", "", c)
+							c=int(re.sub(r"\)", "", c))
 
 							ents[(tid,tid)]=Entity(tid, tid, in_quote=inQuote[0], quote_eid=inQuote[1], quote_id=len(adjusted_quotes), entity_id=c, text=' '.join(sent[tid:tid+1]))
 							ents[(tid,tid)].global_start=global_id
 							ents[(tid,tid)].global_end=global_id
 							
 						elif c.startswith("("):
-							c=int(re.sub("\(", "", c))
+							c=int(re.sub(r"\(", "", c))
 
 							if c not in open_ents:
 								open_ents[c]=[]
@@ -1159,7 +1144,7 @@ class BERTCorefTagger(nn.Module):
 							open_count+=1
 
 						elif c.endswith(")"):
-							c=int(re.sub("\)", "", c))
+							c=int(re.sub(r"\)", "", c))
 
 							assert c in open_ents
 
@@ -1175,8 +1160,8 @@ class BERTCorefTagger(nn.Module):
 					for c in ner:
 
 						if c.startswith("(") and c.endswith(")"):
-							c=re.sub("\(", "", c)
-							c=(re.sub("\)", "", c))
+							c=re.sub(r"\(", "", c)
+							c=(re.sub(r"\)", "", c))
 
 							if (tid, tid) in ents:
 								ner_parts=c.split("_")
@@ -1184,14 +1169,14 @@ class BERTCorefTagger(nn.Module):
 								ents[(tid, tid)].proper=ner_parts[0]
 
 						elif c.startswith("("):
-							c=(re.sub("\(", "", c))
+							c=(re.sub(r"\(", "", c))
 
 							if c not in open_named_ents:
 								open_named_ents[c]=[]
 							open_named_ents[c].append(tid)
 
 						elif c.endswith(")"):
-							c=(re.sub("\)", "", c))
+							c=(re.sub(r"\)", "", c))
 
 							assert c in open_named_ents
 

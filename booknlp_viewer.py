@@ -1,7 +1,8 @@
-import streamlit as st
-import os
 import json
+import os
+
 import pandas as pd
+import streamlit as st
 
 st.set_page_config(layout="wide")
 
@@ -205,7 +206,7 @@ if book_data:
     # st.json(book_data, expanded=False) # Show collapsed by default
 
     # --- Characters Section ---
-    if "characters" in book_data and book_data["characters"]:
+    if book_data.get("characters"):
         st.markdown("---")
         st.header("Characters")
 

@@ -1,9 +1,11 @@
-from booknlp.english.tagger import Tagger
-import torch
-import re
 import os
-import booknlp.common.layered_reader as layered_reader
-import booknlp.common.sequence_layered_reader as sequence_layered_reader
+import re
+
+import torch
+
+from booknlp.common import layered_reader, sequence_layered_reader
+from booknlp.english.tagger import Tagger
+
 
 class LitBankEntityTagger:
 	def __init__(self, model_file, model_tagset):
@@ -47,8 +49,7 @@ class LitBankEntityTagger:
 			max_len=0
 			for sent in b_sent:
 				if sent is not None:
-					if len(sent) > max_len:
-						max_len=len(sent)
+					max_len = max(max_len, len(sent))
 
 			wn_senses=[]
 

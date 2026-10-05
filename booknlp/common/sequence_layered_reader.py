@@ -1,5 +1,6 @@
 import os
 
+
 def read_tagset(filename):
 	tags={}
 	with open(filename) as file:

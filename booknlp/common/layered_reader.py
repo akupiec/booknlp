@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+
 def get_batches(model, sentences, max_batch, tagset, training=True):
 
 	"""
@@ -55,8 +56,7 @@ def get_batches(model, sentences, max_batch, tagset, training=True):
 			# toks=model.tokenizer.tokenize(word[0])
 			length+=len(toks)
 
-		if length > maxLen:
-			maxLen=length
+		maxLen = max(maxLen, length)
 
 	all_data=[]
 	all_masks=[]

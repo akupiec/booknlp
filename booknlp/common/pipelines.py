@@ -1,5 +1,6 @@
 import re
 
+
 class Entity:
 	def __init__(self, start, end, entity_id=None, quote_id=None, quote_eid=None, proper=None, ner_cat=None, in_quote=None, text=None):
 		# print("creating")
@@ -75,6 +76,7 @@ class Token:
 
 
 from spacy.tokens import Doc
+
 
 class SpacyPipeline:
 	def __init__(self, spacy_nlp):
@@ -161,7 +163,7 @@ class StanzaPipeline:
 	def tag(self, text):
 #	def __init__(self, sentence_id, index_within_sentence_idx, token_id, text, pos, lemma, deprel, dephead, ner, startByte, spacyToken):
 
-		text=re.sub("\s+", " ", text)
+		text=re.sub(r"\s+", " ", text)
 		doc = self.nlp(text)
 		tokens=[]
 		tid=0

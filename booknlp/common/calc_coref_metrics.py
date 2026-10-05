@@ -1,10 +1,13 @@
-import subprocess, re, sys
+import re
+import subprocess
+import sys
+
 
 def get_coref_score(metric, path_to_scorer, gold=None, preds=None):
 
 	output=subprocess.check_output(["perl", path_to_scorer, metric, preds, gold]).decode("utf-8")
 	output=output.split("\n")[-3]
-	matcher=re.search("Coreference: Recall: \(.*?\) (.*?)%	Precision: \(.*?\) (.*?)%	F1: (.*?)%", output)
+	matcher=re.search(r"Coreference: Recall: \(.*?\) (.*?)%	Precision: \(.*?\) (.*?)%	F1: (.*?)%", output)
 	if matcher is not None:
 		recall=float(matcher.group(1))
 		precision=float(matcher.group(2))

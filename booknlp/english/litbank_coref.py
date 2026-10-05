@@ -1,9 +1,13 @@
-import torch, sys, re, os
+import os
+import re
+import sys
 
-from booknlp.english.bert_coref_quote_pronouns import BERTCorefTagger
-import numpy as np
+import torch
+
 from booknlp.common.pipelines import Entity
+from booknlp.english.bert_coref_quote_pronouns import BERTCorefTagger
 from booknlp.english.name_coref import NameCoref
+
 
 class LitBankCoref:
 

@@ -1,5 +1,5 @@
-import re
 from collections import Counter
+
 
 class QuoteTagger:
 	
@@ -12,6 +12,8 @@ class QuoteTagger:
 		lastPar=None
 
 		quote_symbols=Counter()
+		bracket_predictions=[]
+		bracket_stack=[]
 
 		for tok in toks:
 			if tok.text == "“" or tok.text == "”" or tok.text == "\"" or tok.text == "“":
@@ -46,6 +48,7 @@ class QuoteTagger:
 					predictions.append((curStartTok, tok.token_id-1))
 				curStartTok=None
 				currentQuote=[]
+				bracket_stack=[]
 
 			if w == quote_symbol:
 
@@ -64,13 +67,21 @@ class QuoteTagger:
 			if curStartTok is not None:
 				currentQuote.append(tok.text)
 
+			if w == "[":
+				bracket_stack.append(tok.token_id)
+			elif w == "]" and len(bracket_stack) > 0:
+				start_tok=bracket_stack.pop()
+				if start_tok < tok.token_id:
+					bracket_predictions.append((start_tok, tok.token_id))
+
 			lastPar=tok.paragraph_id
+
+		predictions=sorted(set(predictions + bracket_predictions))
 
 		for start, end in predictions:
 			for i in range(start, end+1):
 				toks[i].inQuote=True
 
 		return predictions
-
 
 

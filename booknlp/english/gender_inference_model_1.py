@@ -16,15 +16,16 @@ This method encodes several assumptions:
 
 
 # requires scipy==1.5.4
-from collections import Counter
+import os
 import sys
-from tqdm import tqdm
+from collections import Counter
 from os import listdir
 from os.path import isfile
-import os
+
+from tqdm import tqdm
+
 from booknlp.common.pipelines import Token
 
-import random
 
 class GenderEM:
 

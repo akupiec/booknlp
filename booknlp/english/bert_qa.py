@@ -1,8 +1,10 @@
-import torch
 import re
-from booknlp.english.speaker_attribution import BERTSpeakerID
-import numpy as np
 import sys
+
+import numpy as np
+import torch
+
+from booknlp.english.speaker_attribution import BERTSpeakerID
 
 PINK = '\033[95m'
 ENDC = '\033[0m'
@@ -173,8 +175,7 @@ class QuotationAttribution:
 
 			end-=1
 
-			if end < end_tok+1:
-				end=end_tok+1
+			end = max(end, end_tok+1)
 
 
 			toks=[]

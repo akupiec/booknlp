@@ -1,5 +1,6 @@
 import sys
 
+
 def b3(gold, system):
 
 	goldClusters={}

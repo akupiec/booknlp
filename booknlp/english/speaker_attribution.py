@@ -1,17 +1,11 @@
-import sys
 import re
-import random
-from random import shuffle
-from math import sqrt, exp, isnan
-from transformers import BertTokenizer, BertModel
-import torch.nn as nn
-import torch
-import numpy as np
-import argparse
-import json
-from booknlp.common.b3 import b3
 
-from collections import Counter
+import numpy as np
+import torch
+from torch import nn
+from transformers import BertModel, BertTokenizer
+
+from booknlp.common.b3 import b3
 
 PINK = '\033[95m'
 ENDC = '\033[0m'
@@ -26,8 +20,8 @@ class BERTSpeakerID(nn.Module):
 
 		modelName=base_model
 		modelName=re.sub("^speaker_", "", modelName)
-		modelName=re.sub("-v\d.*$", "", modelName)
-		matcher=re.search(".*-(\d+)_H-(\d+)_A-.*", modelName)
+		modelName=re.sub(r"-v\d.*$", "", modelName)
+		matcher=re.search(r".*-(\d+)_H-(\d+)_A-.*", modelName)
 		bert_dim=0
 		modelSize=0
 		self.num_layers=0
@@ -118,8 +112,8 @@ class BERTSpeakerID(nn.Module):
 			max_len = max([len(s) for s in current_batch_input_ids])
 
 			for j, sent in enumerate(current_batch_input_ids):
-				for k in range(len(current_batch_input_ids[j]), max_len):
-					current_batch_input_ids[j].append(0)
+				for k in range(len(sent), max_len):
+					sent.append(0)
 					current_batch_attention_mask[j].append(0)
 
 			for j, (eid, cands, quote) in enumerate(mb):

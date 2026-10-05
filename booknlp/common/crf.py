@@ -5,10 +5,10 @@ MIT License
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.init as I
-import torch.nn.utils.rnn as R
+from torch import nn
 from torch.autograd import Variable
+
 
 def log_sum_exp(vec, dim=0):
 	max, idx = torch.max(vec, dim)
@@ -18,7 +18,7 @@ def log_sum_exp(vec, dim=0):
 
 class CRF(nn.Module):
 	def __init__(self, vocab_size, device):
-		super(CRF, self).__init__()
+		super().__init__()
 
 		self.device=device
 		self.vocab_size = vocab_size

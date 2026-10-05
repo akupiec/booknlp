@@ -1,11 +1,12 @@
 import ssl
-import urllib.request
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
 import argparse
 import os
+
 from booknlp.booknlp import BookNLP
+
 
 def main():
     parser = argparse.ArgumentParser(description='Run BookNLP pipeline on a text file')

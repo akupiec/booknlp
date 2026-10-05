@@ -4,10 +4,11 @@ e.g., Tom, Tom Saywer, Mr. Tom Sawyer, Mr. Sawyer -> TOM SAYWER
 
 """
 
-from collections import Counter
-import sys
 import itertools
 import os
+import sys
+from collections import Counter
+
 
 class NameCoref:
 
@@ -401,7 +402,7 @@ class NameCoref:
 		clusters={}
 
 		for i, val in enumerate(refs):
-			ref=refs[i]
+			ref=val
 			if ref not in clusters:
 				clusters[ref]=Counter()
 			clusters[ref][' '.join(entities[i])]+=1

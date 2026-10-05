@@ -1,22 +1,25 @@
-import sys
-import spacy
 import copy
-from booknlp.common.pipelines import SpacyPipeline
-from booknlp.english.entity_tagger import LitBankEntityTagger
-from booknlp.english.gender_inference_model_1 import GenderEM
-from booknlp.english.name_coref import NameCoref
-from booknlp.english.litbank_coref import LitBankCoref
-from booknlp.english.litbank_quote import QuoteTagger
-from booknlp.english.bert_qa import QuotationAttribution
-from os.path import join
-import os
 import json
+import os
+import sys
+import time
+import urllib.request
 from collections import Counter
 from html import escape
-import time
+from os.path import join
 from pathlib import Path
-import urllib.request 
+
+import spacy
 import torch
+
+from booknlp.common.pipelines import SpacyPipeline
+from booknlp.english.bert_qa import QuotationAttribution
+from booknlp.english.entity_tagger import LitBankEntityTagger
+from booknlp.english.gender_inference_model_1 import GenderEM
+from booknlp.english.litbank_coref import LitBankCoref
+from booknlp.english.litbank_quote import QuoteTagger
+from booknlp.english.name_coref import NameCoref
+
 
 class EnglishBookNLP:
 
@@ -34,7 +37,7 @@ class EnglishBookNLP:
 
 			spacy_nlp = spacy.load(spacy_model, disable=["ner"])
 
-			valid_keys=set("entity,event,supersense,quote,coref".split(","))
+			valid_keys=set(["entity", "event", "supersense", "quote", "coref"])
 			
 			pipes=model_params["pipeline"].split(",")
 
@@ -379,8 +382,7 @@ class EnglishBookNLP:
 						supersense_entities=entity_vals["supersense"]
 						with open(join(outFolder, "%s.supersense" % (idd)), "w", encoding="utf-8") as out:
 							out.write("start_token\tend_token\tsupersense_category\ttext\n")
-							for start, end, cat, text in supersense_entities:
-								out.write("%s\t%s\t%s\t%s\n" % (start, end, cat, text))
+							out.writelines("%s\t%s\t%s\t%s\n" % (start, end, cat, text) for start, end, cat, text in supersense_entities)
 
 					if self.doEvent:
 						events=entity_vals["events"]
@@ -398,6 +400,10 @@ class EnglishBookNLP:
 
 				in_quotes=[]
 				quotes=self.quoteTagger.tag(tokens)
+				system_quote_indexes=set()
+				for idx, (q_start, q_end) in enumerate(quotes):
+					if tokens[q_start].text == "[" and tokens[q_end].text == "]":
+						system_quote_indexes.add(idx)
 
 				print("--- quotes: %.3f seconds ---" % (time.time() - start_time))
 				start_time=time.time()
@@ -484,8 +490,13 @@ class EnglishBookNLP:
 
 						for idx, line in enumerate(attributed_quotations):
 							q_start, q_end=quotes[idx]
-							mention=attributed_quotations[idx]
-							if mention is not None:
+							mention=line
+							if idx in system_quote_indexes:
+								e_start=None
+								e_end=None
+								cat="SYSTEM"
+								speak="SYSTEM"
+							elif mention is not None:
 								entity=entities[mention]
 								speaker_id=assignments[mention]
 								e_start=entity[0]
@@ -600,7 +611,10 @@ class EnglishBookNLP:
 
 						for idx, (start, end) in enumerate(quotes):
 							mention_id=attributed_quotations[idx]
-							if mention_id is not None:
+							if idx in system_quote_indexes:
+								speaker_id="SYSTEM"
+								name="SYSTEM"
+							elif mention_id is not None:
 								speaker_id=assignments[mention_id]
 								name=names[speaker_id].most_common(1)[0][0]
 							else:
@@ -620,4 +634,3 @@ class EnglishBookNLP:
 
 				print("--- TOTAL (excl. startup): %.3f seconds ---, %s words" % (time.time() - originalTime, len(tokens)))
 				return time.time() - originalTime
-
