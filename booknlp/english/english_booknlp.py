@@ -1,4 +1,5 @@
 import copy
+import csv
 import json
 import os
 import sys
@@ -407,17 +408,16 @@ class EnglishBookNLP:
                     if self.doSS:
                         supersense_entities = entity_vals["supersense"]
                         with open(
-                            join(outFolder, "%s.supersense" % (idd)),
+                            join(outFolder, "%s.supersense.csv" % (idd)),
                             "w",
                             encoding="utf-8",
                         ) as out:
-                            out.write(
-                                "start_token\tend_token\tsupersense_category\ttext\n"
-                            )
-                            out.writelines(
-                                "%s\t%s\t%s\t%s\n" % (start, end, cat, text)
-                                for start, end, cat, text in supersense_entities
-                            )
+                            csv_writter = csv.writer(out)
+                            csv_writter.writerow([
+                                "start_token","end_token","supersense_category","text"
+                            ])
+                            for start, end, cat, text in supersense_entities:
+                                csv_writter.writerow([start, end, cat, text])
 
                     if self.doEvent:
                         events = entity_vals["events"]
@@ -426,30 +426,45 @@ class EnglishBookNLP:
                                 token.event = "EVENT"
 
                     with open(
-                        join(outFolder, "%s.tokens" % (idd)), "w", encoding="utf-8"
+                        join(outFolder, "%s.tokens.csv" % (idd)), "w", encoding="utf-8"
                     ) as out:
-                        out.write(
-                            "%s\n"
-                            % "\t".join(
+                        csv_writter = csv.writer(out)
+                        csv_writter.writerow(
+                            [
+                                "paragraph_ID",
+                                "sentence_ID",
+                                "token_ID_within_sentence",
+                                "token_ID_within_document",
+                                "word",
+                                "lemma",
+                                "byte_onset",
+                                "byte_offset",
+                                "POS_tag",
+                                "fine_POS_tag",
+                                "dependency_relation",
+                                "syntactic_head_ID",
+                                "event",
+                            ]
+                        )
+
+                        for token in tokens:
+                            csv_writter.writerow(
                                 [
-                                    "paragraph_ID",
-                                    "sentence_ID",
-                                    "token_ID_within_sentence",
-                                    "token_ID_within_document",
-                                    "word",
-                                    "lemma",
-                                    "byte_onset",
-                                    "byte_offset",
-                                    "POS_tag",
-                                    "fine_POS_tag",
-                                    "dependency_relation",
-                                    "syntactic_head_ID",
-                                    "event",
+                                    token.paragraph_id,
+                                    token.sentence_id,
+                                    token.index_within_sentence_idx,
+                                    token.token_id,
+                                    token.text,
+                                    token.lemma,
+                                    token.startByte,
+                                    token.endByte,
+                                    token.pos,
+                                    token.fine_pos,
+                                    token.deprel,
+                                    token.dephead,
+                                    token.event,
                                 ]
                             )
-                        )
-                        for token in tokens:
-                            out.write("%s\n" % token)
 
                     print("--- entities: %.3f seconds ---" % (time.time() - start_time))
                     start_time = time.time()
@@ -541,42 +556,44 @@ class EnglishBookNLP:
 
                     chardata = self.get_syntax(tokens, entities, assignments, genders)
                     with open(
-                        join(outFolder, "%s.book" % (idd)), "w", encoding="utf-8"
+                        join(outFolder, "%s.book.json" % (idd)), "w", encoding="utf-8"
                     ) as out:
                         json.dump(chardata, out)
 
                 if self.doEntities:
                     # Write entities and coref
                     with open(
-                        join(outFolder, "%s.entities" % (idd)), "w", encoding="utf-8"
+                        join(outFolder, "%s.entities.csv" % (idd)),
+                        "w",
+                        encoding="utf-8",
                     ) as out:
-                        out.write("COREF\tstart_token\tend_token\tprop\tcat\ttext\n")
+                        csv_writter = csv.writer(out)
+                        csv_writter.writerow(
+                            ["COREF", "start_token", "end_token", "prop", "cat", "text"]
+                        )
                         for idx, assignment in enumerate(assignments):
                             start, end, cat, text = entities[idx]
                             ner_prop = cat.split("_")[0]
                             ner_type = cat.split("_")[1]
-                            out.write(
-                                "%s\t%s\t%s\t%s\t%s\t%s\n"
-                                % (assignment, start, end, ner_prop, ner_type, text)
+                            csv_writter.writerow(
+                                [assignment, start, end, ner_prop, ner_type, text]
                             )
 
                 if self.doQuoteAttrib:
                     with open(
-                        join(outFolder, "%s.quotes" % (idd)), "w", encoding="utf-8"
+                        join(outFolder, "%s.quotes.csv" % (idd)), "w", encoding="utf-8"
                     ) as out:
-                        out.write(
-                            "\t".join(
-                                [
-                                    "quote_start",
-                                    "quote_end",
-                                    "mention_start",
-                                    "mention_end",
-                                    "mention_phrase",
-                                    "char_id",
-                                    "quote",
-                                ]
-                            )
-                            + "\n"
+                        csv_writter = csv.writer(out)
+                        csv_writter.writerow(
+                            [
+                                "quote_start",
+                                "quote_end",
+                                "mention_start",
+                                "mention_end",
+                                "mention_phrase",
+                                "char_id",
+                                "quote",
+                            ]
                         )
 
                         for idx, line in enumerate(attributed_quotations):
@@ -600,9 +617,8 @@ class EnglishBookNLP:
                                 cat = None
                                 speak = None
                             quote = [tok.text for tok in tokens[q_start : q_end + 1]]
-                            out.write(
-                                "%s\t%s\t%s\t%s\t%s\t%s\t%s\n"
-                                % (
+                            csv_writter.writerow(
+                                [
                                     q_start,
                                     q_end,
                                     e_start,
@@ -610,7 +626,7 @@ class EnglishBookNLP:
                                     cat,
                                     speak,
                                     " ".join(quote),
-                                )
+                                ]
                             )
 
                         out.close()

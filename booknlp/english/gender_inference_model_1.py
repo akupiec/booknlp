@@ -604,8 +604,8 @@ if __name__ == "__main__":
     ent_files = []
     tok_files = []
     for idd in onlyfiles[:num]:
-        entitiyFile = os.path.join(top, idd, "%s.entities" % idd)
-        tokensFile = os.path.join(top, idd, "%s.tokens" % idd)
+        entitiyFile = os.path.join(top, idd, "%s.entities.csv" % idd)
+        tokensFile = os.path.join(top, idd, "%s.tokens.csv" % idd)
         if isfile(entityFile) and isfile(tokensFile):
             ent_files.append(entityFile)
             tok_files.append(tokensFile)
