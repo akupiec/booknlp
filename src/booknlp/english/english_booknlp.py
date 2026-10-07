@@ -52,7 +52,7 @@ class EnglishBookNLP:
                 self.gender_cats = model_params["referential_gender_cats"]
 
             project_root = Path(__file__).resolve().parents[2]
-            modelPath = os.path.join(project_root, "model")
+            modelPath = os.path.join(project_root, "../model")
             if "model_path" in model_params:
                 modelPath = model_params["model_path"]
 

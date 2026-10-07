@@ -22,7 +22,7 @@ uv sync
 ## Usage
 
 ```bash
-uv run run_booknlp.py examples/pride.short.txt --output-dir output/pride --model small
+uv run booknlp examples/pride.short.txt
 ```
 
 ### Command Line Arguments

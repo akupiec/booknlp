@@ -1,14 +1,16 @@
+import argparse
+import os
 import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
-import argparse
-import os
+from transformers import logging
 
-from booknlp.booknlp import BookNLP
+from booknlp.english.english_booknlp import EnglishBookNLP
 
+logging.set_verbosity_error()
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Run BookNLP pipeline on a text file")
     parser.add_argument("input_file", help="Input text file to process")
     parser.add_argument(
@@ -45,13 +47,9 @@ def main():
     print(f"Using model: {args.model} with BERT enabled")
 
     # Initialize BookNLP with English language and model parameters
-    booknlp = BookNLP("en", model_params)
+    booknlp = EnglishBookNLP(model_params)
 
     # Process the input file and save results to output directory
     print(f"Processing {args.input_file}...")
     booknlp.process(args.input_file, args.output_dir, book_id)
     print(f"Results saved in {args.output_dir}/{book_id}.*")
-
-
-if __name__ == "__main__":
-    main()
