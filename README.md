@@ -19,6 +19,14 @@ cd booknlp
 uv sync
 ```
 
+## Testing
+
+Run the complete test suite with:
+
+```bash
+uv run pytest
+```
+
 ## Usage
 
 ```bash
