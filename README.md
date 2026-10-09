@@ -79,3 +79,13 @@ The pipeline generates several output files in the specified output directory:
    - Entity annotations
    - Character relationships
    - Interactive features
+
+8. `{book_id}.stage_script.txt`: Plain-text stage-script rendering with:
+   - Source text in reading order
+   - Unmarked text assigned to `[NARRATOR]`
+   - Attributed quotes labeled as `[Name #coreference_id]`
+   - System quotes rendered under `[SYSTEM]` without square brackets in the
+     spoken text
+   - Confidently inferred binary referential gender appended as `M` or `F`
+     only when confidence is above 60%
+   - Unattributed quotes labeled as `[UNKNOWN]`

@@ -24,6 +24,7 @@ from booknlp.english.output import (
     write_supersense_csv,
     write_tokens_csv,
 )
+from booknlp.english.stage_script import write_stage_script
 
 
 class EnglishBookNLP:
@@ -527,6 +528,18 @@ class EnglishBookNLP:
                         entities,
                         assignments,
                         tokens,
+                    )
+                    write_stage_script(
+                        outFolder,
+                        idd,
+                        data,
+                        quotes,
+                        attributed_quotations,
+                        system_quote_indexes,
+                        entities,
+                        assignments,
+                        tokens,
+                        genders,
                     )
 
                 if self.doQuoteAttrib and self.doCoref:

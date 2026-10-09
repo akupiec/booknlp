@@ -4,7 +4,6 @@ from collections import Counter
 from html import escape
 from os.path import join
 
-
 def write_supersense_csv(out_folder, book_id, supersense_entities):
     with open(
         join(out_folder, "%s.supersense.csv" % book_id),
